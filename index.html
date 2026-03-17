@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Walkie Telegram">
+<title>Walkie Telegram</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #111820;
+    --surface2: #1a2535;
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --green-dark: #003322;
+    --amber: #ffaa00;
+    --red: #ff4455;
+    --text: #c8d8e8;
+    --text-dim: #5a7a9a;
+    --border: #1e3050;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,136,0.015) 2px, rgba(0,255,136,0.015) 4px);
+    pointer-events: none;
+    z-index: 100;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: 3px; color: var(--green); text-shadow: 0 0 20px rgba(0,255,136,0.5); text-transform: uppercase; }
+  .logo span { color: var(--text-dim); font-weight: 400; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); animation: pulse-red 2s infinite; transition: all 0.3s; }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-green 2s infinite; }
+  @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes pulse-green { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.2)} }
+  .freq-display { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--amber); text-align: right; line-height: 1.4; }
+  .messages-area { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+  .messages-area::-webkit-scrollbar { width: 3px; }
+  .messages-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .msg { display: flex; flex-direction: column; gap: 2px; animation: slideIn 0.3s ease; max-width: 85%; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .msg.incoming { align-self: flex-start; }
+  .msg.outgoing { align-self: flex-end; }
+  .msg-bubble { padding: 8px 12px; border-radius: 4px; font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .msg.incoming .msg-bubble { background: var(--surface2); border-left: 2px solid var(--green); color: var(--text); }
+  .msg.outgoing .msg-bubble { background: var(--green-dark); border-right: 2px solid var(--green); color: var(--green); text-align: right; }
+  .msg-meta { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text-dim); padding: 0 4px; }
+  .msg.outgoing .msg-meta { text-align: right; }
+  .msg-type-badge { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 2px; margin-right: 4px; font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; }
+  .badge-text { background: rgba(0,255,136,0.15); color: var(--green); }
+  .badge-audio { background: rgba(255,170,0,0.15); color: var(--amber); }
+  .speaking-indicator { display: flex; align-items: center; gap: 3px; padding: 6px 10px; background: var(--green-dark); border: 1px solid var(--green); border-radius: 4px; align-self: flex-start; opacity: 0; transition: opacity 0.3s; }
+  .speaking-indicator.active { opacity: 1; }
+  .speaking-indicator span { font-size: 11px; color: var(--green); font-family: 'Share Tech Mono', monospace; }
+  .wave-bar { width: 3px; background: var(--green); border-radius: 2px; animation: wave 0.6s ease-in-out infinite; }
+  .wave-bar:nth-child(1){height:8px;animation-delay:0s}
+  .wave-bar:nth-child(2){height:14px;animation-delay:0.1s}
+  .wave-bar:nth-child(3){height:10px;animation-delay:0.2s}
+  .wave-bar:nth-child(4){height:16px;animation-delay:0.15s}
+  .wave-bar:nth-child(5){height:8px;animation-delay:0.05s}
+  @keyframes wave { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+  .bottom-panel { flex-shrink: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 16px 20px 24px; }
+  .input-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .text-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; padding: 10px 14px; outline: none; transition: border-color 0.2s; }
+  .text-input:focus { border-color: var(--green); }
+  .text-input::placeholder { color: var(--text-dim); font-weight: 400; }
+  .send-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--green); border-radius: 4px; padding: 10px 16px; font-size: 18px; cursor: pointer; transition: all 0.2s; }
+  .send-btn:active { background: var(--green-dark); border-color: var(--green); }
+  .ptt-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ptt-status { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; transition: color 0.2s; }
+  .ptt-status.recording { color: var(--red); animation: blink 0.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .ptt-btn { width: 120px; height: 120px; border-radius: 50%; background: var(--surface2); border: 3px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.15s; position: relative; -webkit-touch-callout: none; touch-action: none; }
+  .ptt-btn::before { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid transparent; transition: all 0.3s; }
+  .ptt-btn.pressed { background: var(--red); border-color: var(--red); transform: scale(0.95); box-shadow: 0 0 30px rgba(255,68,85,0.5), 0 0 60px rgba(255,68,85,0.2); }
+  .ptt-btn.pressed::before { border-color: rgba(255,68,85,0.4); inset: -14px; }
+  .ptt-icon { font-size: 36px; line-height: 1; pointer-events: none; }
+  .ptt-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; pointer-events: none; font-family: 'Share Tech Mono', monospace; }
+  .ptt-btn.pressed .ptt-label { color: white; }
+  .config-bar { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; }
+  .config-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: 'Share Tech Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 3px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
+  .config-btn:active, .config-btn.active { border-color: var(--green); color: var(--green); background: var(--green-dark); }
+  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--surface2); border: 1px solid var(--green); color: var(--green); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 8px 16px; border-radius: 4px; opacity: 0; transition: all 0.3s; z-index: 200; white-space: nowrap; letter-spacing: 1px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 12px 12px 0 0; padding: 24px 20px 36px; width: 100%; transform: translateY(100%); transition: transform 0.3s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal h3 { font-size: 16px; font-weight: 700; letter-spacing: 2px; color: var(--green); margin-bottom: 16px; text-transform: uppercase; }
+  .modal label { display: block; font-size: 11px; font-family: 'Share Tech Mono', monospace; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 5px; margin-top: 12px; text-transform: uppercase; }
+  .modal input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 12px; outline: none; }
+  .modal input:focus { border-color: var(--green); }
+  .modal-save { width: 100%; margin-top: 20px; background: var(--green); border: none; color: var(--bg); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; padding: 13px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-dim); }
+  .empty-state .icon { font-size: 40px; opacity: 0.3; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">WALKIE<span>TEL</span></div>
+  <div class="freq-display">
+    <div id="freqLine">CH 01 · 462.550</div>
+    <div id="timeLine">--:--:--</div>
+  </div>
+  <div class="status-dot" id="statusDot"></div>
+</div>
+<div class="messages-area" id="messagesArea">
+  <div class="empty-state" id="emptyState">
+    <div class="icon">📡</div>
+    <p>Aguardando transmissão...</p>
+  </div>
+  <div class="speaking-indicator" id="speakingIndicator">
+    <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+    <span>LENDO...</span>
+  </div>
+</div>
+<div class="bottom-panel">
+  <div class="input-row">
+    <input type="text" class="text-input" id="textInput" placeholder="Digite uma mensagem...">
+    <button class="send-btn" id="sendBtn">➤</button>
+  </div>
+  <div class="ptt-container">
+    <div class="ptt-status" id="pttStatus">SEGURE PARA FALAR</div>
+    <button class="ptt-btn" id="pttBtn" ontouchstart="startPTT(event)" ontouchend="stopPTT(event)">
+      <div class="ptt-icon">🎙️</div>
+      <div class="ptt-label">PTT</div>
+    </button>
+  </div>
+  <div class="config-bar">
+    <button class="config-btn active" id="autoReadBtn" onclick="toggleAutoRead()">🔊 AUTO-VOZ: ON</button>
+    <button class="config-btn" onclick="openModal()">⚙ CONFIG</button>
+    <button class="config-btn" onclick="clearMessages()">🗑 LIMPAR</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h3>⚙ Configuração</h3>
+    <label>BOT TOKEN</label>
+    <input type="text" id="cfgToken" placeholder="123456:ABC...">
+    <label>CHAT ID</label>
+    <input type="text" id="cfgChatId" placeholder="-100123456789">
+    <label>VELOCIDADE DA VOZ</label>
+    <input type="range" id="cfgSpeed" min="0.7" max="1.5" step="0.1" value="1.0" style="margin-top:8px;width:100%;accent-color:var(--green)">
+    <button class="modal-save" onclick="saveConfig()">SALVAR</button>
+  </div>
+</div>
+<script>
+let CONFIG = { token: '8726110094:AAF9BKI3eQlOar1yA4bby1fnUmeNaB8QdOw', chatId: '-5207048972', speed: 1.0 };
+let autoRead = true, lastUpdateId = 0, pollInterval = null, mediaRecorder = null, audioChunks = [], isRecording = false, speechQueue = [], processingQueue = false;
+window.onload = () => {
+  loadConfig(); updateClock(); setInterval(updateClock, 1000); startPolling();
+  document.getElementById('sendBtn').addEventListener('click', sendText);
+  document.getElementById('textInput').addEventListener('keypress', e => { if(e.key === 'Enter') sendText(); });
+  const btn = document.getElementById('pttBtn');
+  btn.addEventListener('mousedown', startPTT); btn.addEventListener('mouseup', stopPTT); btn.addEventListener('mouseleave', stopPTT);
+};
+function loadConfig() {
+  const saved = localStorage.getItem('walkieConfig');
+  if (saved) { try { CONFIG = { ...CONFIG, ...JSON.parse(saved) }; } catch(e){} }
+  document.getElementById('cfgToken').value = CONFIG.token;
+  document.getElementById('cfgChatId').value = CONFIG.chatId;
+  document.getElementById('cfgSpeed').value = CONFIG.speed;
+}
+function saveConfig() {
+  CONFIG.token = document.getElementById('cfgToken').value.trim();
+  CONFIG.chatId = document.getElementById('cfgChatId').value.trim();
+  CONFIG.speed = parseFloat(document.getElementById('cfgSpeed').value);
+  localStorage.setItem('walkieConfig', JSON.stringify(CONFIG));
+  closeModal(); toast('✅ CONFIGURAÇÃO SALVA'); startPolling();
+}
+function updateClock() { document.getElementById('timeLine').textContent = new Date().toTimeString().split(' ')[0]; }
+function startPolling() { if (pollInterval) clearInterval(pollInterval); pollTelegram(); pollInterval = setInterval(pollTelegram, 3000); }
+async function pollTelegram() {
+  if (!CONFIG.token || !CONFIG.chatId) return;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${CONFIG.token}/getUpdates?offset=${lastUpdateId + 1}&timeout=2`);
+    const data = await res.json();
+    document.getElementById('statusDot').classList.add('online');
+    if (data.ok && data.result.length > 0) {
+      for (const update of data.result) {
+        lastUpdateId = update.update_id;
+        const msg = update.message || update.channel_post;
+        if (!msg) continue;
+        if (String(msg.chat.id) !== String(CONFIG.chatId)) continue;
+        if (msg.text) {
+          addMessage(msg.text, 'incoming', msg.from?.first_name || 'Grupo', 'text');
+          if (autoRead) queueSpeech(msg.text);
+        } else if (msg.voice || msg.audio) {
+          addMessage('🎤 Mensagem de voz recebida', 'incoming', msg.from?.first_name || 'Grupo', 'audio');
+          playTelegramAudio(msg.voice?.file_id || msg.audio?.file_id);
+        }
+      }
+    }
+  } catch(e) { document.getElementById('statusDot').classList.remove('online'); }
+}
+function addMessage(text, dir, sender, type) {
+  document.getElementById('emptyState').style.display = 'none';
+  const area = document.getElementById('messagesArea');
+  const indicator = document.getElementById('speakingIndicator');
+  const div = document.createElement('div');
+  div.className = `msg ${dir}`;
+  const badge = type === 'audio' ? `<span class="msg-type-badge badge-audio">ÁUDIO</span>` : `<span class="msg-type-badge badge-text">TEXT</span>`;
+  const now = new Date().toTimeString().slice(0,5);
+  div.innerHTML = `<div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="msg-meta">${badge}${dir === 'incoming' ? sender + ' · ' : ''}${now}</div>`;
+  area.insertBefore(div, indicator);
+  area.scrollTop = area.scrollHeight;
+}
+function clearMessages() {
+  document.getElementById('messagesArea').innerHTML = `<div class="empty-state" id="emptyState"><div class="icon">📡</div><p>Aguardando transmissão...</p></div><div class="speaking-indicator" id="speakingIndicator"><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><span>LENDO...</span></div>`;
+}
+function queueSpeech(text) { speechQueue.push(text); if (!processingQueue) processQueue(); }
+function processQueue() {
+  if (speechQueue.length === 0) { processingQueue = false; document.getElementById('speakingIndicator').classList.remove('active'); return; }
+  processingQueue = true; speakText(speechQueue.shift(), processQueue);
+}
+function speakText(text, onEnd) {
+  if (!('speechSynthesis' in window)) { if(onEnd) onEnd(); return; }
+  window.speechSynthesis.cancel();
+  document.getElementById('speakingIndicator').classList.add('active');
+  document.getElementById('messagesArea').scrollTop = document.getElementById('messagesArea').scrollHeight;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'pt-BR'; utter.rate = CONFIG.speed; utter.pitch = 1.0; utter.volume = 1.0;
+  const ptVoice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('pt'));
+  if (ptVoice) utter.voice = ptVoice;
+  utter.onend = () => { if(onEnd) onEnd(); }; utter.onerror = () => { if(onEnd) onEnd(); };
+  window.speechSynthesis.speak(utter);
+}
+function toggleAutoRead() {
+  autoRead = !autoRead;
+  const btn = document.getElementById('autoReadBtn');
+  btn.textContent = `🔊 AUTO-VOZ: ${autoRead ? 'ON' : 'OFF'}`;
+  btn.classList.toggle('active', autoRead);
+  if (!autoRead) window.speechSynthesis?.cancel();
+  toast(autoRead ? '🔊 VOZ ATIVADA' : '🔇 VOZ DESATIVADA');
+}
+async function playTelegramAudio(fileId) {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${CONFIG.token}/getFile?file_id=${fileId}`);
+    const data = await res.json();
+    if (data.ok) new Audio(`https://api.telegram.org/file/bot${CONFIG.token}/${data.result.file_path}`).play();
+  } catch(e) {}
+}
+async function sendText() {
+  const input = document.getElementById('textInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addMessage(text, 'outgoing', 'Eu', 'text');
+  try {
+    await fetch(`https://api.telegram.org/bot${CONFIG.token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CONFIG.chatId, text }) });
+    toast('✅ MENSAGEM ENVIADA');
+  } catch(e) { toast('❌ ERRO AO ENVIAR'); }
+}
+async function startPTT(e) {
+  if (e) e.preventDefault();
+  if (isRecording) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = sendAudio;
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('pttBtn').classList.add('pressed');
+    document.getElementById('pttStatus').textContent = '● GRAVANDO...';
+    document.getElementById('pttStatus').classList.add('recording');
+  } catch(e) { toast('❌ MICROFONE BLOQUEADO'); }
+}
+function stopPTT(e) {
+  if (e) e.preventDefault();
+  if (!isRecording || !mediaRecorder) return;
+  mediaRecorder.stop(); mediaRecorder.stream?.getTracks().forEach(t => t.stop());
+  isRecording = false;
+  document.getElementById('pttBtn').classList.remove('pressed');
+  document.getElementById('pttStatus').textContent = 'SEGURE PARA FALAR';
+  document.getElementById('pttStatus').classList.remove('recording');
+}
+async function sendAudio() {
+  if (audioChunks.length === 0) return;
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  addMessage('🎤 Áudio enviado', 'outgoing', 'Eu', 'audio');
+  toast('📤 ENVIANDO ÁUDIO...');
+  const form = new FormData();
+  form.append('chat_id', CONFIG.chatId); form.append('voice', blob, 'voice.webm');
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${CONFIG.token}/sendVoice`, { method: 'POST', body: form });
+    const data = await res.json();
+    toast(data.ok ? '✅ ÁUDIO ENVIADO' : '❌ ERRO: ' + (data.description || 'falha'));
+  } catch(e) { toast('❌ FALHA NO ENVIO'); }
+}
+function openModal() {
+  document.getElementById('cfgToken').value = CONFIG.token;
+  document.getElementById('cfgChatId').value = CONFIG.chatId;
+  document.getElementById('cfgSpeed').value = CONFIG.speed;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if(e.target === document.getElementById('modalOverlay')) closeModal(); }
+let toastTimeout;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimeout); toastTimeout = setTimeout(() => el.classList.remove('show'), 2500);
+}
+window.speechSynthesis?.addEventListener('voiceschanged', () => {});
+</script>
+</body>
+</html>
